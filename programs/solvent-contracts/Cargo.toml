@@ -15,4 +15,7 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.13.2"
+# anchor-lang = "0.13.2"
+# anchor-spl = "0.13.2"
+anchor-lang = { git = "https://github.com/project-serum/anchor", rev = "941e43942928d40528c101fb8edeb0ac4eebc766" }
+anchor-spl = { git = "https://github.com/project-serum/anchor", rev = "941e43942928d40528c101fb8edeb0ac4eebc766" }
