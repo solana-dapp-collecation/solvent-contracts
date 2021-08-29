@@ -30,7 +30,7 @@ pub mod solvent_contracts {
         Ok(())
     }
 
-    pub fn addToBucket(ctx: Context<AddToBucket>) -> ProgramResult {
+    pub fn addToBucket(ctx: Context<AddToBucket>, _bucket_authority_bump: u8) -> ProgramResult {
          // Transfer coin tokens to vault
          let nft_transfer_ctx = CpiContext::new(
             ctx.accounts.token_program.clone(),
@@ -48,9 +48,15 @@ pub mod solvent_contracts {
             to: ctx.accounts.user_droplet_account.to_account_info().clone(),
             authority: ctx.accounts.bucket_authority.to_account_info().clone(),
         };
-        let mint_to_user_ctx = CpiContext::new(
+        // TODO - Add sign with seeds
+
+        let seeds = &[AUTHORITY_SEED.as_bytes(), &[_bucket_authority_bump]];
+        let signer_seeds = &[&seeds[..]];
+
+        let mint_to_user_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.clone(),
             mint_to_user_accounts,
+            signer_seeds
         );
         token::mint_to(mint_to_user_ctx, 1)?;
         Ok(())
