@@ -61,6 +61,28 @@ pub mod solvent_contracts {
         token::mint_to(mint_to_user_ctx, 1)?;
         Ok(())
     }
+
+    pub fn redeem(ctx: Context<Redeem>, _bucket_authority_bump: u8) -> ProgramResult {
+        // TODO - check how to burn the droplets
+        // token::burn();
+
+        let seeds = &[AUTHORITY_SEED.as_bytes(), &[_bucket_authority_bump]];
+        let signer_seeds = &[&seeds[..]];
+
+        // Transfer coin tokens to vault
+        let nft_transfer_ctx = CpiContext::new_with_signer(
+        ctx.accounts.token_program.clone(),
+            token::Transfer {
+                from: ctx.accounts.nft_bucket_vault.to_account_info().clone(),
+                to: ctx.accounts.user_nft_wallet.to_account_info().clone(),
+                authority: ctx.accounts.bucket_authority.clone(),
+            },
+            signer_seeds
+        );
+        token::transfer(nft_transfer_ctx, 1)?;
+        
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -137,6 +159,18 @@ pub struct AddToBucket<'info> {
 
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct Redeem<'info> {
+    user_droplet_account: CpiAccount<'info, TokenAccount>,
+    pub user_nft_wallet: CpiAccount<'info, TokenAccount>,
+    pub nft_bucket_vault: CpiAccount<'info, TokenAccount>,
+    pub bucket_authority: AccountInfo<'info>,
+    pub token_program: AccountInfo<'info>,
+    #[account(signer)]
+    pub user: AccountInfo<'info>,
+
 }
 
 
