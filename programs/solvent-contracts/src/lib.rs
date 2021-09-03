@@ -31,8 +31,9 @@ pub mod solvent_contracts {
     }
 
     pub fn addToBucket(ctx: Context<AddToBucket>, _bucket_authority_bump: u8) -> ProgramResult {
-         // Transfer coin tokens to vault
-         let nft_transfer_ctx = CpiContext::new(
+
+        // Transfer NFT to bucket
+        let nft_transfer_ctx = CpiContext::new(
             ctx.accounts.token_program.clone(),
             token::Transfer {
                 from: ctx.accounts.user_nft_wallet.to_account_info().clone(),
@@ -42,20 +43,18 @@ pub mod solvent_contracts {
         );
         token::transfer(nft_transfer_ctx, 1)?;
 
-        // Mint the position NFT into the user's token account
-        let mint_to_user_accounts = token::MintTo {
-            mint: ctx.accounts.droplets_mint.to_account_info().clone(),
-            to: ctx.accounts.user_droplet_account.to_account_info().clone(),
-            authority: ctx.accounts.bucket_authority.to_account_info().clone(),
-        };
         // TODO - Add sign with seeds
-
+        // Mint the droplets into the user's token account
         let seeds = &[AUTHORITY_SEED.as_bytes(), &[_bucket_authority_bump]];
         let signer_seeds = &[&seeds[..]];
 
         let mint_to_user_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.clone(),
-            mint_to_user_accounts,
+            token::MintTo {
+                mint: ctx.accounts.droplets_mint.to_account_info().clone(),
+                to: ctx.accounts.user_droplet_account.to_account_info().clone(),
+                authority: ctx.accounts.bucket_authority.to_account_info().clone(),
+            },
             signer_seeds
         );
         token::mint_to(mint_to_user_ctx, 1)?;
@@ -93,7 +92,7 @@ pub struct InitializeBucket<'info> {
     #[account(signer)]
     creator: AccountInfo<'info>,
 
-    // Common vault authority for all markets, no namespacing
+    // Common bucket authority for all markets, no namespacing
     #[account(
         seeds = [AUTHORITY_SEED.as_bytes()],
         bump = _bucket_authority_bump,
@@ -116,8 +115,10 @@ pub struct InitializeBucket<'info> {
 
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,
+
     #[account(address = system_program::ID)]
     pub system_program: AccountInfo<'info>,
+
     pub rent: Sysvar<'info, Rent>,
 }
 
@@ -128,7 +129,6 @@ pub struct FinalizeBucket<'info> {
     #[account(signer, address = bucket.creator)]
     creator: AccountInfo<'info>
 }
-
 
 #[derive(Accounts)]
 pub struct WhitelistToken<'info> {
@@ -142,18 +142,26 @@ pub struct WhitelistToken<'info> {
     mint_state: ProgramAccount<'info, MintState>
 }
 
-
 #[derive(Accounts)]
 pub struct AddToBucket<'info> {
     pub bucket: ProgramAccount<'info, Bucket>,
     pub nft_mint: CpiAccount<'info, Mint>,
     pub mint_state: ProgramAccount<'info, MintState>,
+
+    // Account representing user's NFT account
     pub user_nft_wallet: CpiAccount<'info, TokenAccount>,
+
+    // Account representing a bucket for the collection
     pub nft_bucket_vault: CpiAccount<'info, TokenAccount>,
 
     #[account(signer)]
     pub authority: AccountInfo<'info>,
+
+    // The Droplet token account associated with a bucket
     pub droplets_mint: CpiAccount<'info, Mint>,
+
+    // The user's Droplet account where it's droplets will be minted in
+    // exchange of NFT deposits.
     pub user_droplet_account: CpiAccount<'info, TokenAccount>,
     pub bucket_authority: AccountInfo<'info>,
 
@@ -173,14 +181,12 @@ pub struct Redeem<'info> {
 
 }
 
-
 #[account]
 pub struct Bucket {
     creator: Pubkey,
     isFinalized: bool,
 
 }
-
 
 #[account]
 pub struct MintState {
